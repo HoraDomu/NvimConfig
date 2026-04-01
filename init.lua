@@ -353,7 +353,7 @@ require("lazy").setup({
         },
       })
 
-      require("nvim-treesitter.configs").setup({
+      require("nvim-treesitter.config").setup({
         modules = {},
         sync_install = false,
         auto_install = true,
@@ -451,15 +451,12 @@ require("lazy").setup({
     version = "*",
     event = "VeryLazy",
     config = function()
-      require("nvim-surround").setup({
-        keymaps = {
-          normal = "s",
-          visual = "s",
-          normal_cur = "ss",
-          delete = "ds",
-          change = "cs",
-        },
-      })
+      require("nvim-surround").setup({})
+      vim.keymap.set("n", "s", "<Plug>(nvim-surround-normal)")
+      vim.keymap.set("n", "ss", "<Plug>(nvim-surround-normal-cur)")
+      vim.keymap.set("x", "s", "<Plug>(nvim-surround-visual)")
+      vim.keymap.set("n", "ds", "<Plug>(nvim-surround-delete)")
+      vim.keymap.set("n", "cs", "<Plug>(nvim-surround-change)")
     end
   },
   {
