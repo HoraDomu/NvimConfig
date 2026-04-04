@@ -47,7 +47,7 @@ require("lazy").setup({
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
       require("mason-lspconfig").setup({
-        ensure_installed = { "lua_ls", "clangd", "glsl_analyzer", "tsserver", "svelte", "biome", "gopls", "rust_analyzer" },
+        ensure_installed = { "lua_ls", "clangd", "glsl_analyzer", "tsserver", "svelte", "biome", "gopls", "rust_analyzer", "jdtls" },
       })
 
       local mason_registry = require("mason-registry")
@@ -107,6 +107,27 @@ require("lazy").setup({
         },
       })
 
+      vim.lsp.config("jdtls", {
+        capabilities = capabilities,
+        settings = {
+          java = {
+            eclipse = { downloadSources = true },
+            configuration = { updateBuildConfiguration = "interactive" },
+            maven = { downloadSources = true },
+            implementationsCodeLens = { enabled = true },
+            referencesCodeLens = { enabled = true },
+            format = { enabled = true },
+            signatureHelp = { enabled = true },
+            completion = {
+              favoriteStaticMembers = {
+                "java.util.Objects.requireNonNull",
+                "java.util.Objects.requireNonNullElse",
+              },
+            },
+          },
+        },
+      })
+
       vim.lsp.config("rust_analyzer", {
         capabilities = capabilities,
         settings = {
@@ -121,7 +142,7 @@ require("lazy").setup({
         },
       })
 
-      vim.lsp.enable({ "lua_ls", "clangd", "glsl_analyzer", "ts_ls", "biome", "svelte", "gopls", "rust_analyzer" })
+      vim.lsp.enable({ "lua_ls", "clangd", "glsl_analyzer", "ts_ls", "biome", "svelte", "gopls", "rust_analyzer", "jdtls" })
 
       --[[ Conform ]]
       local conform = require("conform")
@@ -133,6 +154,9 @@ require("lazy").setup({
           h = { "clang_format" },
           hpp = { "clang_format" },
           glsl = { "clang_format" },
+
+          -- Java
+          java = { "google-java-format" },
 
           -- JavaScript
           javascript = { "biome" },
@@ -359,7 +383,7 @@ require("lazy").setup({
         auto_install = true,
         ignore_install = {},
         parser_install_dir = nil,
-        ensure_installed = { "glsl", "gdscript", "godot_resource", "gdshader", "c", "cpp", "javascript", "typescript", "go", "html" },
+        ensure_installed = { "glsl", "gdscript", "godot_resource", "gdshader", "c", "cpp", "javascript", "typescript", "go", "html", "java" },
         highlight = {
           enable = true,
         },
@@ -414,14 +438,14 @@ require("lazy").setup({
       local highlights = {
         FloatShadow = {},
         MatchParen = { bg = "#504945", sp = "NONE" },
-        Normal = { bg = "#191919", fg = fg },
-        StatusLine = { bg = "#0D0D0D", fg = fg },
-        TelescopeNormal = { bg = "#0F0F0F", fg = fg },
-        TelescopeBorder = { bg = "#0F0F0F", fg = fg },
-        Pmenu = { bg = "#0D0D0D", fg = fg },
-        NormalFloat = { bg = "#0D0D0D", fg = fg },
-        CursorLine = { bg = "#0D0D0D" },
-        FloatBorder = { bg = "#0B0B0B", fg = fg },
+        Normal = { bg = "#000000", fg = fg },
+        StatusLine = { bg = "#000000", fg = fg },
+        TelescopeNormal = { bg = "#000000", fg = fg },
+        TelescopeBorder = { bg = "#000000", fg = fg },
+        Pmenu = { bg = "#0a0a0a", fg = fg },
+        NormalFloat = { bg = "#0a0a0a", fg = fg },
+        CursorLine = { bg = "#0a0a0a" },
+        FloatBorder = { bg = "#000000", fg = fg },
       }
 
       for group, opts in pairs(highlights) do
@@ -484,6 +508,16 @@ require("lazy").setup({
     "windwp/nvim-ts-autotag",
     event = "InsertEnter",
     ft = { "html", "javascript", "javascriptreact", "typescript", "typescriptreact", "svelte", "vue", "xml" },
+  },
+  {
+    "sphamba/smear-cursor.nvim",
+    event = "VeryLazy",
+    opts = {
+      smear_between_buffers = true,
+      smear_between_neighbor_lines = true,
+      scroll_buffer_space = true,
+      legacy_computing_symbols_support = false,
+    },
   },
   { "numToStr/Comment.nvim", event = "VeryLazy" },
   { "folke/lazydev.nvim", ft = "lua", opts = {} },
