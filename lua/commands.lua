@@ -83,3 +83,14 @@ end, {})
 vim.api.nvim_create_user_command('MatchClear', function()
   vim.fn.clearmatches()
 end, {})
+
+-- C/C++ specific settings
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "c", "cpp" },
+  callback = function()
+    vim.opt_local.colorcolumn = "80,120"
+    vim.opt_local.commentstring = "// %s"
+    -- don't auto-wrap comments or add comment leader on o/O
+    vim.opt_local.formatoptions:remove({ "c", "o", "r" })
+  end,
+})

@@ -33,6 +33,11 @@ end)
 vim.keymap.set('v', '<leader>p', '"_dP')
 vim.keymap.set('i', '<C-BS>', '<C-W>', { noremap = true })
 
+vim.keymap.set('n', '<leader>ih', function()
+  local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
+  vim.lsp.inlay_hint.enable(not enabled, { bufnr = 0 })
+end, { desc = "Toggle inlay hints" })
+
 -- Window navigation
 vim.keymap.set('n', '<A-h>', '<C-w>h', { desc = 'Move to left window' })
 vim.keymap.set('n', '<A-j>', '<C-w>j', { desc = 'Move to window below' })

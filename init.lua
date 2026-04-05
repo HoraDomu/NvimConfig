@@ -47,7 +47,7 @@ require("lazy").setup({
       local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
       require("mason-lspconfig").setup({
-        ensure_installed = { "lua_ls", "clangd", "glsl_analyzer", "tsserver", "svelte", "biome", "gopls", "rust_analyzer", "jdtls" },
+        ensure_installed = { "lua_ls", "clangd", "glsl_analyzer", "tsserver", "svelte", "biome", "gopls", "rust_analyzer", "jdtls", "neocmake" },
       })
 
       local mason_registry = require("mason-registry")
@@ -63,13 +63,30 @@ require("lazy").setup({
         cmd = {
           "clangd",
           "--background-index",
+          "--background-index-priority=normal",
           "--clang-tidy",
           "--header-insertion=never",
+          "--completion-style=detailed",
+          "--function-arg-placeholders=0",
+          "--pch-storage=memory",
           "--query-driver=**",
+          "-j=4",
+          "--all-scopes-completion",
+          "--suggest-missing-includes",
+          "--fallback-style=llvm",
         },
         filetypes = { "c", "h", "cpp", "hpp" },
         capabilities = capabilities,
-        init_options = { compilationDatabasePath = "./build" },
+        init_options = {
+          compilationDatabasePath = "./build",
+          clangdFileStatus = true,
+          usePlaceholders = false,
+        },
+      })
+
+      vim.lsp.config("neocmake", {
+        capabilities = capabilities,
+        filetypes = { "cmake" },
       })
 
       vim.lsp.config("glsl_analyzer", {
@@ -142,7 +159,7 @@ require("lazy").setup({
         },
       })
 
-      vim.lsp.enable({ "lua_ls", "clangd", "glsl_analyzer", "ts_ls", "biome", "svelte", "gopls", "rust_analyzer", "jdtls" })
+      vim.lsp.enable({ "lua_ls", "clangd", "glsl_analyzer", "ts_ls", "biome", "svelte", "gopls", "rust_analyzer", "jdtls", "neocmake" })
 
       --[[ Conform ]]
       local conform = require("conform")
@@ -197,8 +214,17 @@ require("lazy").setup({
           local opts = { buffer = args.buf }
           vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
           vim.keymap.set("n", "gh", vim.lsp.buf.hover, opts)
+          vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
+          vim.keymap.set("n", "gi", vim.lsp.buf.implementation, opts)
           vim.keymap.set("n", "<leader>r", vim.lsp.buf.rename, opts)
           vim.keymap.set("n", "<C-.>", vim.lsp.buf.code_action, opts)
+
+          if client.name == "clangd" then
+            vim.keymap.set("n", "<leader>h",
+              "<cmd>ClangdSwitchSourceHeader<CR>",
+              vim.tbl_extend("force", opts, { desc = "Switch header/source" }))
+            vim.lsp.inlay_hint.enable(true, { bufnr = args.buf })
+          end
         end,
       })
 
@@ -383,7 +409,7 @@ require("lazy").setup({
         auto_install = true,
         ignore_install = {},
         parser_install_dir = nil,
-        ensure_installed = { "glsl", "gdscript", "godot_resource", "gdshader", "c", "cpp", "javascript", "typescript", "go", "html", "java" },
+        ensure_installed = { "glsl", "gdscript", "godot_resource", "gdshader", "c", "cpp", "javascript", "typescript", "go", "html", "java", "cmake" },
         highlight = {
           enable = true,
         },
@@ -521,5 +547,174 @@ require("lazy").setup({
   },
   { "numToStr/Comment.nvim", event = "VeryLazy" },
   { "folke/lazydev.nvim", ft = "lua", opts = {} },
+
+  -- C++ textobjects: af/if=function, ac/ic=class, aa/ia=parameter
+  -- Motions: ]f/[f next/prev function, ]c/[c next/prev class
+  {
+    "nvim-treesitter/nvim-treesitter-textobjects",
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    event = { "BufReadPre", "BufNewFile" },
+    config = function()
+      require("nvim-treesitter.config").setup({
+        textobjects = {
+          select = {
+            enable = true,
+            lookahead = true,
+            keymaps = {
+              ["af"] = "@function.outer",
+              ["if"] = "@function.inner",
+              ["ac"] = "@class.outer",
+              ["ic"] = "@class.inner",
+              ["aa"] = "@parameter.outer",
+              ["ia"] = "@parameter.inner",
+              ["al"] = "@loop.outer",
+              ["il"] = "@loop.inner",
+            },
+          },
+          move = {
+            enable = true,
+            set_jumps = true,
+            goto_next_start = {
+              ["]f"] = "@function.outer",
+              ["]c"] = "@class.outer",
+              ["]a"] = "@parameter.inner",
+            },
+            goto_next_end = {
+              ["]F"] = "@function.outer",
+              ["]C"] = "@class.outer",
+            },
+            goto_previous_start = {
+              ["[f"] = "@function.outer",
+              ["[c"] = "@class.outer",
+              ["[a"] = "@parameter.inner",
+            },
+            goto_previous_end = {
+              ["[F"] = "@function.outer",
+              ["[C"] = "@class.outer",
+            },
+          },
+          swap = {
+            enable = true,
+            swap_next = { ["<leader>sa"] = "@parameter.inner" },
+            swap_previous = { ["<leader>sA"] = "@parameter.inner" },
+          },
+        },
+      })
+    end,
+  },
+
+  -- Shows current function/class context at top of screen
+  {
+    "nvim-treesitter/nvim-treesitter-context",
+    event = { "BufReadPre", "BufNewFile" },
+    opts = {
+      enable = true,
+      max_lines = 4,
+      min_window_height = 0,
+      multiline_threshold = 20,
+      trim_scope = "outer",
+      mode = "cursor",
+      zindex = 20,
+    },
+  },
+
+  -- clangd extras: AST viewer, type hierarchy, symbol info
+  -- <leader>ca=AST, <leader>ct=type hierarchy, <leader>ci=symbol info
+  {
+    "p00f/clangd_extensions.nvim",
+    ft = { "c", "cpp", "h", "hpp" },
+    config = function()
+      require("clangd_extensions").setup({
+        inlay_hints = { inline = false }, -- use native nvim inlay hints
+        ast = { highlights = { detail = "Comment" } },
+        memory_usage = { border = "rounded" },
+        symbol_info = { border = "rounded" },
+      })
+      vim.keymap.set("n", "<leader>ca", "<cmd>ClangdAST<CR>", { desc = "Clangd AST" })
+      vim.keymap.set("n", "<leader>ct", "<cmd>ClangdTypeHierarchy<CR>", { desc = "Clangd type hierarchy" })
+      vim.keymap.set("n", "<leader>ci", "<cmd>ClangdSymbolInfo<CR>", { desc = "Clangd symbol info" })
+    end,
+  },
+
+  -- CMake integration: build, run, select target/variant
+  {
+    "Civitasv/cmake-tools.nvim",
+    ft = { "c", "cpp", "h", "hpp", "cmake" },
+    dependencies = { "nvim-lua/plenary.nvim" },
+    opts = {
+      cmake_command = "cmake",
+      cmake_build_directory = "build",
+      cmake_build_type = "Debug",
+      cmake_generate_options = { "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" },
+      cmake_build_options = {},
+      cmake_console_size = 10,
+      cmake_console_position = "belowright",
+      cmake_show_console = "always",
+      cmake_dap_configuration = { name = "cpp", type = "codelldb", request = "launch" },
+    },
+  },
+
+  -- C++ debugger: F5=continue, F10=step over, F11=step into, F12=step out
+  -- <leader>b=breakpoint, <leader>B=conditional bp, <leader>du=toggle UI
+  {
+    "mfussenegger/nvim-dap",
+    ft = { "c", "cpp", "h", "hpp" },
+    dependencies = {
+      "rcarriga/nvim-dap-ui",
+      "nvim-neotest/nvim-nio",
+      "jay-babu/mason-nvim-dap.nvim",
+    },
+    config = function()
+      require("mason-nvim-dap").setup({
+        ensure_installed = { "codelldb" },
+        automatic_installation = true,
+      })
+
+      local dap = require("dap")
+      local dapui = require("dapui")
+
+      local mason_bin = vim.fn.stdpath("data") .. "/mason/bin/codelldb"
+      if IsWindows() then mason_bin = mason_bin .. ".CMD" end
+
+      dap.adapters.codelldb = {
+        type = "server",
+        port = "${port}",
+        executable = { command = mason_bin, args = { "--port", "${port}" } },
+      }
+
+      dap.configurations.cpp = {
+        {
+          name = "Launch",
+          type = "codelldb",
+          request = "launch",
+          program = function()
+            return vim.fn.input("Executable: ", vim.fn.getcwd() .. "/", "file")
+          end,
+          cwd = "${workspaceFolder}",
+          stopOnEntry = false,
+          args = {},
+        },
+      }
+      dap.configurations.c = dap.configurations.cpp
+
+      dapui.setup()
+
+      dap.listeners.before.attach.dapui_config = function() dapui.open() end
+      dap.listeners.before.launch.dapui_config = function() dapui.open() end
+      dap.listeners.before.event_terminated.dapui_config = function() dapui.close() end
+      dap.listeners.before.event_exited.dapui_config = function() dapui.close() end
+
+      vim.keymap.set("n", "<F5>", dap.continue, { desc = "DAP continue" })
+      vim.keymap.set("n", "<F10>", dap.step_over, { desc = "DAP step over" })
+      vim.keymap.set("n", "<F11>", dap.step_into, { desc = "DAP step into" })
+      vim.keymap.set("n", "<F12>", dap.step_out, { desc = "DAP step out" })
+      vim.keymap.set("n", "<leader>b", dap.toggle_breakpoint, { desc = "Toggle breakpoint" })
+      vim.keymap.set("n", "<leader>B", function()
+        dap.set_breakpoint(vim.fn.input("Condition: "))
+      end, { desc = "Conditional breakpoint" })
+      vim.keymap.set("n", "<leader>dr", dap.repl.open, { desc = "DAP REPL" })
+      vim.keymap.set("n", "<leader>du", dapui.toggle, { desc = "DAP UI toggle" })
+    end,
+  },
 })
 require("commands")
