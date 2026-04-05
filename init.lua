@@ -23,6 +23,7 @@ require("lazy").setup({
   },
   { "numToStr/Comment.nvim", event = "VeryLazy" },
   { "windwp/nvim-autopairs", event = "InsertEnter", opts = {} },
+  { "sphamba/smear-cursor.nvim", event = "VeryLazy", opts = {} },
 })
 
 require("commands")
