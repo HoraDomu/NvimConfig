@@ -22,6 +22,7 @@ require("lazy").setup({
     end,
   },
   { "numToStr/Comment.nvim", event = "VeryLazy" },
+  { "windwp/nvim-autopairs", event = "InsertEnter", opts = {} },
 })
 
 require("commands")
